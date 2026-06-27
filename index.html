@@ -21,9 +21,10 @@
      5 套调色板，每套 = cream canvas + 深色 ink + 一个暖色 accent
      ========================================================================= */
   :root {
-    /* 字体 —— 衬线标题 + 人文 sans 正文（Claude 的 literary voice） */
-    --font-serif: "Cormorant Garamond", "EB Garamond", "Tiempos Headline", Georgia, "Times New Roman", serif;
-    --font-sans: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", Roboto, sans-serif;
+    /* 字体 —— 中文优先：思源宋体（标题）+ 思源黑体（正文）
+       拉丁字符回退到 EB Garamond / Inter，避免 Cormorant Garamond 不含中文导致回退到系统黑体 */
+    --font-serif: "Noto Serif SC", "Source Han Serif SC", "Songti SC", "SimSun", "EB Garamond", Georgia, "Times New Roman", serif;
+    --font-sans: "Noto Sans SC", "Source Han Sans SC", "PingFang SC", "Microsoft YaHei", "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
     --font-mono: "JetBrains Mono", ui-monospace, "SF Mono", Menlo, monospace;
 
     /* 默认调色板：雾蓝 Mist Blue
@@ -1628,13 +1629,279 @@
     @page { size: A4 portrait; margin: 0; }
   }
 
-  /* 响应式 */
-  @media (max-width: 1100px) {
+  /* 响应式 —— 平板：保持三栏但更紧凑 */
+  @media (max-width: 1100px) and (min-width: 769px) {
     .app { flex-direction: column; padding: 8px; }
     .sidebar { width: 100%; max-width: none; min-width: 0; max-height: 32vh; }
     .editor { width: 100%; max-width: none; min-width: 0; }
     .preview { min-width: 0; }
     .resizer { display: none; }
+  }
+
+  /* =========================================================================
+     移动端适配 —— 主屏简历预览 + 底部工具栏 + 弹层式功能模块
+     ========================================================================= */
+  .mobile-toolbar,
+  .mobile-sheet,
+  .mobile-sheet-backdrop,
+  .mobile-fab {
+    display: none;
+  }
+
+  @media (max-width: 768px) {
+    html, body { height: 100%; }
+    body {
+      overflow: hidden;
+      font-size: 14px;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    /* 主布局：只保留预览，隐藏侧栏与编辑区（DOM 保留以维持事件监听） */
+    .app {
+      display: block;
+      padding: 0;
+      height: 100vh;
+      height: 100dvh;
+      gap: 0;
+    }
+    .resizer { display: none !important; }
+    .sidebar,
+    .editor {
+      position: fixed;
+      top: 0;
+      left: -100vw;
+      width: 1px;
+      height: 1px;
+      overflow: hidden;
+      visibility: hidden;
+      pointer-events: none;
+      opacity: 0;
+      border: none;
+      box-shadow: none;
+    }
+
+    /* 预览区 = 主屏 */
+    .preview {
+      width: 100% !important;
+      min-width: 0 !important;
+      max-width: none !important;
+      border: none !important;
+      border-radius: 0 !important;
+      box-shadow: none !important;
+      height: 100vh;
+      height: 100dvh;
+    }
+    .preview-header {
+      display: none;
+    }
+
+    .preview-container {
+      flex: 1;
+      padding: 12px 10px 76px;
+      background: var(--surface-soft);
+      align-items: flex-start;
+      justify-content: center;
+      overflow-y: auto;
+      overflow-x: hidden;
+      -webkit-overflow-scrolling: touch;
+    }
+
+    /* ============== 底部工具栏 ============== */
+    .mobile-toolbar {
+      display: flex;
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      height: 60px;
+      background: var(--accent);
+      align-items: stretch;
+      justify-content: space-around;
+      z-index: 100;
+      box-shadow: 0 -2px 16px rgba(0, 0, 0, 0.14);
+      padding-bottom: env(safe-area-inset-bottom, 0);
+      transition: background 0.4s var(--ease);
+    }
+    .mobile-toolbar-btn {
+      background: transparent;
+      border: none;
+      color: rgba(255, 255, 255, 0.94);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 3px;
+      font-size: 10.5px;
+      font-weight: 500;
+      font-family: var(--font-sans);
+      padding: 6px 2px;
+      flex: 1;
+      min-width: 0;
+      transition: background 0.15s var(--ease);
+      -webkit-tap-highlight-color: transparent;
+    }
+    .mobile-toolbar-btn:active { background: rgba(255, 255, 255, 0.16); }
+    .mobile-toolbar-btn svg {
+      width: 20px;
+      height: 20px;
+      stroke: currentColor;
+      fill: none;
+      stroke-width: 1.7;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+    }
+    .mobile-toolbar-btn span {
+      max-width: 100%;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      letter-spacing: 0.2px;
+    }
+
+    /* ============== 弹层（底部抽屉） ============== */
+    .mobile-sheet {
+      display: none;
+      position: fixed;
+      inset: 0;
+      z-index: 300;
+      flex-direction: column;
+      justify-content: flex-end;
+    }
+    .mobile-sheet.open { display: flex; }
+
+    .mobile-sheet-backdrop {
+      display: block;
+      position: absolute;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.5);
+      opacity: 0;
+      animation: mobileFadeIn 0.25s var(--ease-out) forwards;
+      z-index: 1;
+    }
+    @keyframes mobileFadeIn { to { opacity: 1; } }
+
+    .mobile-sheet-content {
+      position: relative;
+      z-index: 2;
+      background: var(--bg-elevated, #fff);
+      border-radius: 18px 18px 0 0;
+      max-height: 88vh;
+      max-height: 88dvh;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      padding-bottom: env(safe-area-inset-bottom, 0);
+      box-shadow: 0 -10px 40px rgba(0, 0, 0, 0.25);
+      transform: translateY(100%);
+      animation: mobileSlideUp 0.32s var(--ease-out) forwards;
+    }
+    @keyframes mobileSlideUp { to { transform: translateY(0); } }
+
+    /* 抓手装饰 */
+    .mobile-sheet-content::before {
+      content: '';
+      display: block;
+      width: 36px;
+      height: 4px;
+      background: var(--hairline);
+      border-radius: 2px;
+      margin: 8px auto 0;
+      flex-shrink: 0;
+    }
+
+    .mobile-sheet-header {
+      padding: 10px 18px 12px;
+      border-bottom: 1px solid var(--hairline-soft);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-shrink: 0;
+    }
+    .mobile-sheet-header h3 {
+      font-family: var(--font-serif);
+      font-size: 19px;
+      font-weight: 500;
+      color: var(--text-strong);
+      letter-spacing: -0.2px;
+    }
+    .mobile-sheet-close {
+      width: 32px;
+      height: 32px;
+      border: none;
+      background: var(--surface-soft);
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--muted);
+      font-size: 20px;
+      line-height: 1;
+      cursor: pointer;
+      transition: all 0.15s var(--ease);
+    }
+    .mobile-sheet-close:active { background: var(--surface-card); color: var(--text-strong); }
+
+    .mobile-sheet-body {
+      padding: 14px 16px 18px;
+      overflow-y: auto;
+      flex: 1;
+      -webkit-overflow-scrolling: touch;
+      max-height: calc(88vh - 60px);
+      max-height: calc(88dvh - 60px);
+    }
+
+    /* 弹层内部容纳侧栏 section 时的样式重置 */
+    .mobile-sheet-body .side-section {
+      margin-bottom: 16px;
+      padding-bottom: 16px;
+      border-bottom: 1px solid var(--hairline-soft);
+    }
+    .mobile-sheet-body .side-section:last-child {
+      margin-bottom: 0;
+      border-bottom: none;
+      padding-bottom: 0;
+    }
+    /* 弹层里默认展开所有 section */
+    .mobile-sheet-body .side-section.collapsed .collapsible-body { display: block; }
+    .mobile-sheet-body .side-section .chevron-toggle { display: none; }
+    .mobile-sheet-body .side-section h3 {
+      font-size: 12px;
+      color: var(--muted);
+      margin-bottom: 12px;
+      pointer-events: none;
+    }
+
+    /* 弹层里编辑器内容（模块卡片）的适配 */
+    .mobile-sheet-body #editorContent { padding: 0; }
+    .mobile-sheet-body .module-card { margin-bottom: 10px; }
+    .mobile-sheet-body .module-head { padding: 11px 13px; }
+    .mobile-sheet-body .module-body { padding: 13px; }
+    .mobile-sheet-body .form-row { grid-template-columns: 1fr 1fr; gap: 8px; }
+    .mobile-sheet-body .item-card { padding: 11px; }
+    .mobile-sheet-body .item-card .item-del { opacity: 1; }
+    .mobile-sheet-body .module-title-input { font-size: 16px; }
+
+    /* 模块库按钮在移动端 2 列 */
+    .mobile-sheet-body .module-pool { grid-template-columns: 1fr 1fr; gap: 8px; }
+    .mobile-sheet-body .pool-btn { padding: 12px 6px; font-size: 12px; }
+
+    /* 导出按钮等 */
+    .mobile-sheet-body .btn { height: 40px; font-size: 14px; }
+
+    /* 移动端模块操作按钮：加大点击区域，拖拽手柄隐藏（移动端用箭头排序） */
+    .mobile-sheet-body .drag-handle { display: none; }
+    .mobile-sheet-body .icon-btn {
+      width: 32px;
+      height: 32px;
+    }
+    .mobile-sheet-body .icon-btn svg { width: 18px; height: 18px; }
+    .mobile-sheet-body .module-actions { gap: 2px; flex-wrap: wrap; justify-content: flex-end; }
+
+    /* ============== 移动端隐藏元素 ============== */
+    .brand { display: none; }
+
+    /* 简历纸张在移动端的缩放由 JS 控制 */
+    .resume-paper { box-shadow: 0 2px 12px rgba(0,0,0,0.08); }
   }
 
 </style>
@@ -1683,6 +1950,27 @@
         <h3 class="collapsible-header">版式设置 <span class="chevron-toggle">▾</span></h3>
         <div class="collapsible-body">
           <div class="typo-control">
+            <div class="typo-group">
+              <label class="typo-label">标题字体 <span class="typo-value" id="typoFontSerifLabel">思源宋体</span></label>
+              <select id="typoFontSerif" class="typo-select">
+                <option value="Noto Serif SC">思源宋体 (Noto Serif SC)</option>
+                <option value="Noto Sans SC">思源黑体 (Noto Sans SC)</option>
+                <option value="Cormorant Garamond">Cormorant Garamond</option>
+                <option value="EB Garamond">EB Garamond</option>
+                <option value="Playfair Display">Playfair Display</option>
+                <option value="Georgia">Georgia</option>
+              </select>
+            </div>
+            <div class="typo-group">
+              <label class="typo-label">正文字体 <span class="typo-value" id="typoFontSansLabel">思源黑体</span></label>
+              <select id="typoFontSans" class="typo-select">
+                <option value="Noto Sans SC">思源黑体 (Noto Sans SC)</option>
+                <option value="Noto Serif SC">思源宋体 (Noto Serif SC)</option>
+                <option value="Inter">Inter</option>
+                <option value="PingFang SC">PingFang SC</option>
+                <option value="Microsoft YaHei">微软雅黑</option>
+              </select>
+            </div>
             <div class="typo-group">
               <label class="typo-label">全局字号 <span class="typo-value" id="typoSizeLabel">13px</span></label>
               <input type="range" id="typoSize" min="10" max="18" value="13" step="1" class="sat-slider">
@@ -1769,6 +2057,86 @@
       <div class="resume-paper" id="resumePaper"></div>
     </div>
   </section>
+</div>
+
+<!-- ===================== 移动端底部工具栏 ===================== -->
+<nav class="mobile-toolbar" id="mobileToolbar" aria-label="移动端工具栏">
+  <button class="mobile-toolbar-btn" type="button" data-sheet="sheet-modules" aria-label="模块管理">
+    <svg viewBox="0 0 24 24"><path d="M3.75 6A2.25 2.25 0 0 1 6 3.75h2.25A2.25 2.25 0 0 1 10.5 6v2.25a2.25 2.25 0 0 1-2.25 2.25H6A2.25 2.25 0 0 1 3.75 8.25V6Zm9.75 0A2.25 2.25 0 0 1 15.75 3.75H18A2.25 2.25 0 0 1 20.25 6v2.25A2.25 2.25 0 0 1 18 10.5h-2.25A2.25 2.25 0 0 1 13.5 8.25V6Zm-9.75 9.75A2.25 2.25 0 0 1 6 13.5h2.25a2.25 2.25 0 0 1 2.25 2.25V18a2.25 2.25 0 0 1-2.25 2.25H6A2.25 2.25 0 0 1 3.75 18v-2.25Zm9.75 0a2.25 2.25 0 0 1 2.25-2.25H18a2.25 2.25 0 0 1 2.25 2.25V18A2.25 2.25 0 0 1 18 20.25h-2.25A2.25 2.25 0 0 1 13.5 18v-2.25Z"/></svg>
+    <span>模块管理</span>
+  </button>
+  <button class="mobile-toolbar-btn" type="button" data-sheet="sheet-spacing" aria-label="间距设置">
+    <svg viewBox="0 0 24 24"><path d="M3.75 5.25h16.5M3.75 12h16.5M3.75 18.75h16.5M7.5 3v3m0 6v3m0 6v-3m9-9v3m0 6v3"/></svg>
+    <span>间距设置</span>
+  </button>
+  <button class="mobile-toolbar-btn" type="button" data-sheet="sheet-skin" aria-label="皮肤设置">
+    <svg viewBox="0 0 24 24"><path d="M4.098 19.902c.91.91 2.386.91 3.296 0L18 9.296V5.25a2.25 2.25 0 0 0-2.25-2.25H11.7L4.098 11.604a2.332 2.332 0 0 0 0 3.296l.001.001ZM8.25 7.5l1.5 1.5"/></svg>
+    <span>皮肤设置</span>
+  </button>
+  <button class="mobile-toolbar-btn" type="button" data-sheet="sheet-template" aria-label="封面模板">
+    <svg viewBox="0 0 24 24"><path d="M19.5 14.25v-2.625a3.375 3.375 0 0 0-3.375-3.375h-1.5A1.125 1.125 0 0 1 13.5 7.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 0 0-9-9Z"/></svg>
+    <span>封面模板</span>
+  </button>
+  <button class="mobile-toolbar-btn" type="button" data-sheet="sheet-more" aria-label="更多">
+    <svg viewBox="0 0 24 24"><path d="M6.75 12a.75.75 0 1 1-1.5 0 .75.75 0 0 1 1.5 0ZM12.75 12a.75.75 0 1 1-1.5 0 .75.75 0 0 1 1.5 0ZM18.75 12a.75.75 0 1 1-1.5 0 .75.75 0 0 1 1.5 0Z"/></svg>
+    <span>更多</span>
+  </button>
+</nav>
+
+<!-- ===================== 移动端弹层 ===================== -->
+<div class="mobile-sheet" id="sheet-modules" role="dialog" aria-modal="true" aria-label="模块管理">
+  <div class="mobile-sheet-backdrop" data-close></div>
+  <div class="mobile-sheet-content">
+    <div class="mobile-sheet-header">
+      <h3>模块管理</h3>
+      <button class="mobile-sheet-close" type="button" data-close aria-label="关闭">×</button>
+    </div>
+    <div class="mobile-sheet-body" data-source="modules"></div>
+  </div>
+</div>
+
+<div class="mobile-sheet" id="sheet-spacing" role="dialog" aria-modal="true" aria-label="间距设置">
+  <div class="mobile-sheet-backdrop" data-close></div>
+  <div class="mobile-sheet-content">
+    <div class="mobile-sheet-header">
+      <h3>间距与版式</h3>
+      <button class="mobile-sheet-close" type="button" data-close aria-label="关闭">×</button>
+    </div>
+    <div class="mobile-sheet-body" data-source="spacing"></div>
+  </div>
+</div>
+
+<div class="mobile-sheet" id="sheet-skin" role="dialog" aria-modal="true" aria-label="皮肤设置">
+  <div class="mobile-sheet-backdrop" data-close></div>
+  <div class="mobile-sheet-content">
+    <div class="mobile-sheet-header">
+      <h3>皮肤设置</h3>
+      <button class="mobile-sheet-close" type="button" data-close aria-label="关闭">×</button>
+    </div>
+    <div class="mobile-sheet-body" data-source="skin"></div>
+  </div>
+</div>
+
+<div class="mobile-sheet" id="sheet-template" role="dialog" aria-modal="true" aria-label="封面模板">
+  <div class="mobile-sheet-backdrop" data-close></div>
+  <div class="mobile-sheet-content">
+    <div class="mobile-sheet-header">
+      <h3>封面模板</h3>
+      <button class="mobile-sheet-close" type="button" data-close aria-label="关闭">×</button>
+    </div>
+    <div class="mobile-sheet-body" data-source="template"></div>
+  </div>
+</div>
+
+<div class="mobile-sheet" id="sheet-more" role="dialog" aria-modal="true" aria-label="更多功能">
+  <div class="mobile-sheet-backdrop" data-close></div>
+  <div class="mobile-sheet-content">
+    <div class="mobile-sheet-header">
+      <h3>更多功能</h3>
+      <button class="mobile-sheet-close" type="button" data-close aria-label="关闭">×</button>
+    </div>
+    <div class="mobile-sheet-body" data-source="more"></div>
+  </div>
 </div>
 
 <div id="printArea" style="display:none;"></div>
@@ -1921,8 +2289,8 @@ function defaultState() {
     brightness: 100,  // 70-130，100 为默认
     // 版式设置 —— 字体/字号/间距，可自由调节（不影响文字颜色）
     typography: {
-      fontSerif: 'Cormorant Garamond',   // 衬线字体（标题）
-      fontSans: 'Inter',                  // 无衬线字体（正文）
+      fontSerif: 'Noto Serif SC',   // 衬线字体（标题）—— 思源宋体
+      fontSans: 'Noto Sans SC',            // 无衬线字体（正文）—— 思源黑体
       baseSize: 13,                       // 基准字号 px（10-18）
       lineHeight: 1.7,                    // 行高（1.3-2.2）
       sectionGap: 24,                     // 模块间距 px（12-48）
@@ -1953,6 +2321,9 @@ function loadState() {
         const defaultTypo = defaultState().typography;
         if (!parsed.typography) parsed.typography = defaultTypo;
         else parsed.typography = { ...defaultTypo, ...parsed.typography };
+        // 迁移旧版默认字体（Cormorant Garamond / Inter）到思源宋体 / 思源黑体
+        if (parsed.typography.fontSerif === 'Cormorant Garamond') parsed.typography.fontSerif = defaultTypo.fontSerif;
+        if (parsed.typography.fontSans === 'Inter') parsed.typography.fontSans = defaultTypo.fontSans;
         return parsed;
       }
     }
@@ -2088,10 +2459,28 @@ function initCollapsible() {
   });
 }
 
-// 版式设置：字号/行高/间距。改动后实时应用到简历预览。
+// 版式设置：字体/字号/行高/间距。改动后实时应用到简历预览。
+// 字体显示名映射（用于 label）
+const FONT_DISPLAY_NAMES = {
+  'Noto Serif SC': '思源宋体',
+  'Noto Sans SC': '思源黑体',
+  'Cormorant Garamond': 'Cormorant Garamond',
+  'EB Garamond': 'EB Garamond',
+  'Playfair Display': 'Playfair Display',
+  'Georgia': 'Georgia',
+  'Inter': 'Inter',
+  'PingFang SC': 'PingFang SC',
+  'Microsoft YaHei': '微软雅黑'
+};
+function fontDisplayName(f) { return FONT_DISPLAY_NAMES[f] || f; }
+
 function initTypography() {
   const t = state.typography || defaultState().typography;
   const els = {
+    fontSerif:       document.getElementById('typoFontSerif'),
+    fontSans:        document.getElementById('typoFontSans'),
+    fontSerifLabel:  document.getElementById('typoFontSerifLabel'),
+    fontSansLabel:   document.getElementById('typoFontSansLabel'),
     size:      document.getElementById('typoSize'),
     lh:        document.getElementById('typoLh'),
     gap:       document.getElementById('typoGap'),
@@ -2103,16 +2492,32 @@ function initTypography() {
     reset:     document.getElementById('typoReset'),
   };
   // 初始化控件值
+  if (els.fontSerif) els.fontSerif.value = t.fontSerif;
+  if (els.fontSans)  els.fontSans.value  = t.fontSans;
   if (els.size)      els.size.value      = t.baseSize;
   if (els.lh)        els.lh.value        = t.lineHeight;
   if (els.gap)       els.gap.value       = t.sectionGap;
   if (els.pad)       els.pad.value       = t.pagePadding;
   // 初始化标签
+  if (els.fontSerifLabel) els.fontSerifLabel.textContent = fontDisplayName(t.fontSerif);
+  if (els.fontSansLabel)  els.fontSansLabel.textContent  = fontDisplayName(t.fontSans);
   if (els.sizeLabel) els.sizeLabel.textContent = t.baseSize + 'px';
   if (els.lhLabel)   els.lhLabel.textContent   = t.lineHeight.toFixed(1);
   if (els.gapLabel)  els.gapLabel.textContent  = t.sectionGap + 'px';
   if (els.padLabel)  els.padLabel.textContent  = t.pagePadding + 'px';
 
+  // 标题字体
+  if (els.fontSerif) els.fontSerif.addEventListener('change', () => {
+    state.typography.fontSerif = els.fontSerif.value;
+    if (els.fontSerifLabel) els.fontSerifLabel.textContent = fontDisplayName(state.typography.fontSerif);
+    saveState(); renderPreview();
+  });
+  // 正文字体
+  if (els.fontSans) els.fontSans.addEventListener('change', () => {
+    state.typography.fontSans = els.fontSans.value;
+    if (els.fontSansLabel) els.fontSansLabel.textContent = fontDisplayName(state.typography.fontSans);
+    saveState(); renderPreview();
+  });
   // 字号滑块
   if (els.size) els.size.addEventListener('input', () => {
     state.typography.baseSize = parseInt(els.size.value, 10);
@@ -2173,6 +2578,8 @@ function renderModuleCard(m, idx) {
         <span class="m-icon icon-svg">${HEROICONS[meta.icon] || HEROICONS.clipboard}</span>
         <input class="module-title-input" data-rename="${m.id}" value="${escapeHtml(m.title)}" onclick="event.stopPropagation()">
         <div class="module-actions" onclick="event.stopPropagation()">
+          <button class="icon-btn icon-svg" data-move-up="${m.id}" title="上移">${HEROICONS.arrowUp}</button>
+          <button class="icon-btn icon-svg" data-move-down="${m.id}" title="下移">${HEROICONS.arrowDown}</button>
           <button class="icon-btn icon-svg" data-toggle-vis="${m.id}" title="${m.visible ? '隐藏' : '显示'}">${m.visible ? HEROICONS.eye : HEROICONS.eyeOff}</button>
           ${meta.fixed ? '' : `<button class="icon-btn danger icon-svg" data-del="${m.id}" title="删除模块">${HEROICONS.trash}</button>`}
         </div>
@@ -2389,6 +2796,14 @@ function bindModuleEvents() {
     };
   });
 
+  // 上移 / 下移模块（移动端友好，点击一下移动一格）
+  document.querySelectorAll('[data-move-up]').forEach(el => {
+    el.onclick = () => moveModule(el.dataset.moveUp, -1);
+  });
+  document.querySelectorAll('[data-move-down]').forEach(el => {
+    el.onclick = () => moveModule(el.dataset.moveDown, 1);
+  });
+
   document.querySelectorAll('[data-del]').forEach(el => {
     el.onclick = () => {
       const id = el.dataset.del;
@@ -2549,6 +2964,20 @@ function bindDragAndDrop() {
 }
 
 // ==================== 模块增删 ====================
+// 移动模块排序：dir = -1 上移一格，dir = +1 下移一格
+function moveModule(id, dir) {
+  const idx = state.modules.findIndex(x => x.id === id);
+  if (idx < 0) return;
+  const newIdx = idx + dir;
+  if (newIdx < 0 || newIdx >= state.modules.length) {
+    showToast(dir < 0 ? '已在顶部' : '已在底部');
+    return;
+  }
+  const [moved] = state.modules.splice(idx, 1);
+  state.modules.splice(newIdx, 0, moved);
+  saveState(); renderEditor(); renderPreview();
+}
+
 function addModule(type) {
   if (type === 'basic') {
     if (!findModuleByType('basic')) {
@@ -2606,8 +3035,8 @@ function renderPreview() {
   // 颜色变量（accent + 固定文字色）+ 版式变量（字体/字号/间距）
   const typo = state.typography || defaultState().typography;
   const typoVars = {
-    '--r-font-serif': `"${typo.fontSerif}", "EB Garamond", Georgia, serif`,
-    '--r-font-sans': `"${typo.fontSans}", -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei", sans-serif`,
+    '--r-font-serif': `"${typo.fontSerif}", "Noto Serif SC", "Source Han Serif SC", "Songti SC", "SimSun", Georgia, serif`,
+    '--r-font-sans': `"${typo.fontSans}", "Noto Sans SC", "Source Han Sans SC", "PingFang SC", "Microsoft YaHei", -apple-system, BlinkMacSystemFont, sans-serif`,
     '--r-base-size': typo.baseSize + 'px',
     '--r-line-height': typo.lineHeight,
     '--r-section-gap': typo.sectionGap + 'px',
@@ -2934,6 +3363,14 @@ function applyZoom() {
   const paper = document.getElementById('resumePaper');
   paper.style.transform = `scale(${zoomLevel})`;
   document.getElementById('zoomLevel').textContent = Math.round(zoomLevel * 100) + '%';
+  // 移动端：transform: scale() 不改变布局高度，会在缩放后留下大片空白。
+  // 用负 margin-bottom 把布局高度收回到视觉缩放后的高度，避免底部出现巨长空白。
+  if (isMobile()) {
+    const unscaledH = paper.offsetHeight; // 不受 transform 影响的布局高度
+    paper.style.marginBottom = `${(unscaledH * zoomLevel) - unscaledH}px`;
+  } else {
+    paper.style.marginBottom = '';
+  }
 }
 function zoomIn() { zoomLevel = Math.min(zoomLevel + 0.1, 1.5); applyZoom(); }
 function zoomOut() { zoomLevel = Math.max(zoomLevel - 0.1, 0.3); applyZoom(); }
@@ -3198,6 +3635,156 @@ function importJSON(event) {
   event.target.value = '';
 }
 
+// ==================== 移动端适配 ====================
+const MOBILE_BREAKPOINT = 768;
+const mobileSheetSources = {
+  'sheet-modules':  () => [document.getElementById('editorContent')],
+  'sheet-spacing':  () => [findSectionByTitle('版式设置')],
+  'sheet-skin':     () => [findSectionByTitle('色阶配色'), findSectionByTitle('饱和度')],
+  'sheet-template': () => [findSectionByTitle('简历模板')],
+  'sheet-more':     () => [findSectionByTitle('添加模块'), findSectionByTitle('导入 / 导出'), findSectionByTitle('数据')]
+};
+// 记录每个 sheet 中被移入的节点及其原始位置，便于切回桌面时复位
+const mobileSheetState = {};
+
+function isMobile() { return window.innerWidth <= MOBILE_BREAKPOINT; }
+
+function findSectionByTitle(title) {
+  const headers = document.querySelectorAll('.side-section h3');
+  for (const h of headers) {
+    const txt = h.textContent.replace('▾', '').trim();
+    if (txt === title) return h.closest('.side-section');
+  }
+  return null;
+}
+
+function openMobileSheet(sheetId) {
+  if (!isMobile()) return;
+  const sheet = document.getElementById(sheetId);
+  if (!sheet) return;
+
+  // 先关闭其它已打开的 sheet
+  document.querySelectorAll('.mobile-sheet.open').forEach(s => {
+    if (s.id !== sheetId) s.classList.remove('open');
+  });
+
+  // 首次打开：把对应源节点移入 sheet body
+  if (!mobileSheetState[sheetId]) {
+    const body = sheet.querySelector('.mobile-sheet-body');
+    const nodes = (mobileSheetSources[sheetId] || (() => []))().filter(Boolean);
+    mobileSheetState[sheetId] = nodes.map(node => {
+      const originalParent = node.parentNode;
+      const originalNext = node.nextSibling;
+      body.appendChild(node);
+      return { node, originalParent, originalNext };
+    });
+  }
+
+  sheet.classList.add('open');
+  document.body.style.overflow = 'hidden';
+  // 触发动画后重置 transform，确保再次打开有动画
+  const content = sheet.querySelector('.mobile-sheet-content');
+  if (content) {
+    content.style.animation = 'none';
+    void content.offsetWidth;
+    content.style.animation = '';
+  }
+}
+
+function closeMobileSheet(sheetId) {
+  const sheet = document.getElementById(sheetId);
+  if (!sheet) return;
+  sheet.classList.remove('open');
+  // 如果没有其它打开的 sheet，恢复 body 滚动
+  if (!document.querySelector('.mobile-sheet.open')) {
+    document.body.style.overflow = '';
+  }
+}
+
+function closeAllMobileSheetsAndRestore() {
+  Object.keys(mobileSheetState).forEach(sheetId => {
+    const sheet = document.getElementById(sheetId);
+    if (sheet) sheet.classList.remove('open');
+    mobileSheetState[sheetId].forEach(({ node, originalParent, originalNext }) => {
+      if (node.parentNode !== originalParent) {
+        if (originalNext && originalNext.parentNode === originalParent) {
+          originalParent.insertBefore(node, originalNext);
+        } else {
+          originalParent.appendChild(node);
+        }
+      }
+    });
+    delete mobileSheetState[sheetId];
+  });
+  document.body.style.overflow = '';
+}
+
+// 移动端缩放：自动适应屏幕宽度（扣除两侧 padding）
+function mobileZoomFit() {
+  if (!isMobile()) return;
+  const container = document.getElementById('previewContainer');
+  const paper = document.getElementById('resumePaper');
+  if (!container || !paper) return;
+  paper.style.transform = 'scale(1)';
+  const cw = container.clientWidth - 24;   // 12px 左右内边距
+  const pw = paper.offsetWidth || 794;
+  zoomLevel = Math.min(1, Math.max(0.25, cw / pw));
+  applyZoom();
+}
+
+// 事件绑定：工具栏按钮 / 关闭按钮 / 背景点击 / ESC
+function initMobileEvents() {
+  document.addEventListener('click', (e) => {
+    const toolbarBtn = e.target.closest('.mobile-toolbar-btn');
+    if (toolbarBtn) {
+      openMobileSheet(toolbarBtn.dataset.sheet);
+      return;
+    }
+    const closeEl = e.target.closest('[data-close]');
+    if (closeEl) {
+      const sheet = closeEl.closest('.mobile-sheet');
+      if (sheet) closeMobileSheet(sheet.id);
+    }
+  });
+
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') {
+      const open = document.querySelector('.mobile-sheet.open');
+      if (open) closeMobileSheet(open.id);
+    }
+  });
+
+  // 阻止 sheet 内容滚动穿透到背景
+  document.querySelectorAll('.mobile-sheet-body').forEach(body => {
+    body.addEventListener('touchmove', (e) => e.stopPropagation(), { passive: true });
+  });
+
+  // 窗口尺寸变化：切回桌面时复位节点；移动端则重新适应宽度
+  let resizeTimer;
+  window.addEventListener('resize', () => {
+    clearTimeout(resizeTimer);
+    resizeTimer = setTimeout(() => {
+      if (!isMobile()) {
+        closeAllMobileSheetsAndRestore();
+      } else {
+        mobileZoomFit();
+      }
+    }, 180);
+  });
+
+  // 横竖屏切换
+  window.addEventListener('orientationchange', () => {
+    setTimeout(mobileZoomFit, 300);
+  });
+}
+
+function initMobile() {
+  initMobileEvents();
+  if (isMobile()) {
+    setTimeout(mobileZoomFit, 250);
+  }
+}
+
 // ==================== 初始化 ====================
 function init() {
   applyPalette();
@@ -3208,7 +3795,8 @@ function init() {
   initSaturation();
   initTypography();
   initCollapsible();
-  setTimeout(zoomFit, 200);
+  initMobile();
+  setTimeout(() => { isMobile() ? mobileZoomFit() : zoomFit(); }, 220);
 }
 
 init();
